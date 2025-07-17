@@ -631,7 +631,7 @@ const HelpPage: React.FC = () => {
             <h4
               style={{ color: "white", marginBottom: "8px", fontSize: "16px" }}
             >
-              🚀 What's New
+              🚀 What&apos;s New
             </h4>
             <p
               style={{ color: "#ccc", fontSize: "14px", marginBottom: "10px" }}

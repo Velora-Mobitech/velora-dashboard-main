@@ -258,7 +258,7 @@ const EnhancedEmployeeDashboard: React.FC = () => {
           ></div>
           <div style={{ fontSize: "28px", marginBottom: "10px" }}>💰</div>
           <h3 style={{ color: "#888", fontSize: "12px", marginBottom: "8px" }}>
-            TODAY'S EARNINGS
+            TODAY&apos;S EARNINGS
           </h3>
           <p
             style={{

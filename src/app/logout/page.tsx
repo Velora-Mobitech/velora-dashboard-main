@@ -250,7 +250,7 @@ const LogoutPage: React.FC = () => {
             }}
           >
             Are you sure you want to sign out? Your current session will be
-            terminated and you'll need to log in again to access your dashboard.
+            terminated and you&apos;ll need to log in again to access your dashboard.
           </p>
 
           {/* Session Info */}

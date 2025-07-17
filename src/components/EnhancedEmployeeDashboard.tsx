@@ -1,33 +1,110 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { employeeAPI, dashboardAPI } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface EmployeeData {
+  name: string;
+  email: string;
+  position: string;
+  department: string;
+  productivity: number;
+  performance: {
+    efficiency: number;
+    productivity: number;
+    quality: number;
+  };
+  earnings: {
+    today: number;
+    weekly: number;
+    monthly: number;
+  };
+  device: {
+    batteryLevel: number;
+    isCharging: boolean;
+    deviceModel: string;
+    lastSync: string;
+  };
+  location: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    lastUpdate: string;
+  };
+}
 
 const EnhancedEmployeeDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState("efficiency");
   const [timeRange, setTimeRange] = useState("today");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [batteryLevel, setBatteryLevel] = useState(87);
-  const [tripCount, setTripCount] = useState(23);
-  const [earnings, setEarnings] = useState(284.5);
 
+  // Load employee data
+  useEffect(() => {
+    const loadEmployeeData = async () => {
+      try {
+        setLoading(true);
+        const [dashboardResponse, profileResponse] = await Promise.all([
+          employeeAPI.getDashboard(),
+          employeeAPI.getProfile(),
+        ]);
+
+        if (dashboardResponse.success) {
+          setDashboardStats(dashboardResponse);
+        }
+
+        if (profileResponse.success) {
+          setEmployeeData(profileResponse.employee);
+        }
+      } catch (err) {
+        setError("Failed to load employee data");
+        console.error("Error loading employee data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.role === "employee") {
+      loadEmployeeData();
+    }
+  }, [user]);
+
+  // Auto-refresh data
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      if (autoRefresh) {
-        setBatteryLevel((prev) => Math.max(10, prev - Math.random() * 2));
-        setTripCount((prev) => prev + (Math.random() > 0.7 ? 1 : 0));
-        setEarnings(
-          (prev) => prev + (Math.random() > 0.8 ? Math.random() * 15 : 0)
-        );
+      if (autoRefresh && user?.role === "employee") {
+        employeeAPI
+          .getDashboard()
+          .then((response) => {
+            if (response.success) {
+              setDashboardStats(response);
+            }
+          })
+          .catch((err) => console.error("Auto-refresh error:", err));
       }
-    }, 5000);
+    }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(timer);
-  }, [autoRefresh]);
+  }, [autoRefresh, user]);
+
+  // Update current time every second
+  useEffect(() => {
+    const timeTimer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeTimer);
+  }, []);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
@@ -45,6 +122,32 @@ const EnhancedEmployeeDashboard: React.FC = () => {
       day: "numeric",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-600 text-center">
+          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get current values from API data or defaults
+  const currentBatteryLevel = employeeData?.device?.batteryLevel || 87;
+  const currentEarnings = employeeData?.earnings?.today || 0;
+  const currentProductivity = employeeData?.performance?.productivity || 0;
+  const currentEfficiency = employeeData?.performance?.efficiency || 0;
+  const currentQuality = employeeData?.performance?.quality || 0;
 
   return (
     <div
@@ -171,7 +274,7 @@ const EnhancedEmployeeDashboard: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            {batteryLevel.toFixed(0)}%
+            {currentBatteryLevel.toFixed(0)}%
           </p>
           <div
             style={{
@@ -184,9 +287,9 @@ const EnhancedEmployeeDashboard: React.FC = () => {
           >
             <div
               style={{
-                width: `${batteryLevel}%`,
+                width: `${currentBatteryLevel}%`,
                 height: "100%",
-                background: batteryLevel > 30 ? "#00ff88" : "#ff4444",
+                background: currentBatteryLevel > 30 ? "#00ff88" : "#ff4444",
                 borderRadius: "2px",
                 transition: "all 0.3s ease",
               }}
@@ -227,7 +330,7 @@ const EnhancedEmployeeDashboard: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            {tripCount}
+            {dashboardStats?.stats?.tasksCompleted || 0}
           </p>
           <p style={{ color: "#00ff88", fontSize: "12px" }}>
             📈 +3 from yesterday
@@ -267,7 +370,7 @@ const EnhancedEmployeeDashboard: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            ${earnings.toFixed(2)}
+            ${currentEarnings.toFixed(2)}
           </p>
           <p style={{ color: "#00ff88", fontSize: "12px" }}>
             📈 +$12.50 per hour
@@ -483,7 +586,7 @@ const EnhancedEmployeeDashboard: React.FC = () => {
               >
                 <span style={{ fontSize: "12px" }}>🚗 Trip Goal</span>
                 <span style={{ fontSize: "12px", color: "#00ff88" }}>
-                  {tripCount} / 25
+                  {dashboardStats?.stats?.tasksCompleted || 0} / 25
                 </span>
               </div>
               <div
@@ -497,7 +600,9 @@ const EnhancedEmployeeDashboard: React.FC = () => {
               >
                 <div
                   style={{
-                    width: `${(tripCount / 25) * 100}%`,
+                    width: `${
+                      ((dashboardStats?.stats?.tasksCompleted || 0) / 25) * 100
+                    }%`,
                     height: "100%",
                     background: "#00ff88",
                     borderRadius: "3px",

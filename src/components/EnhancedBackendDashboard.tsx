@@ -1,14 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { backendAPI, analyticsAPI } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const EnhancedBackendDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [selectedTimeRange, setSelectedTimeRange] = useState("24h");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [showSystemLogs, setShowSystemLogs] = useState(false);
   const [selectedServer, setSelectedServer] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Real-time data simulation
+  // Real-time data from API
   const [systemMetrics, setSystemMetrics] = useState({
     cpuUsage: 68,
     memoryUsage: 72,
@@ -20,45 +25,135 @@ const EnhancedBackendDashboard: React.FC = () => {
     uptime: 99.9,
   });
 
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        setSystemMetrics((prev) => ({
-          ...prev,
-          cpuUsage: Math.max(
-            0,
-            Math.min(100, prev.cpuUsage + (Math.random() - 0.5) * 10)
-          ),
-          memoryUsage: Math.max(
-            0,
-            Math.min(100, prev.memoryUsage + (Math.random() - 0.5) * 8)
-          ),
-          diskUsage: Math.max(
-            0,
-            Math.min(100, prev.diskUsage + (Math.random() - 0.5) * 2)
-          ),
-          networkLoad: Math.max(
-            0,
-            Math.min(100, prev.networkLoad + (Math.random() - 0.5) * 15)
-          ),
-          activeConnections: Math.max(
-            0,
-            prev.activeConnections + Math.floor((Math.random() - 0.5) * 50)
-          ),
-          responseTime: Math.max(
-            50,
-            prev.responseTime + (Math.random() - 0.5) * 30
-          ),
-          errorRate: Math.max(
-            0,
-            Math.min(5, prev.errorRate + (Math.random() - 0.5) * 0.1)
-          ),
-        }));
-      }, 3000);
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
 
-      return () => clearInterval(interval);
+  // Load backend data
+  useEffect(() => {
+    const loadBackendData = async () => {
+      try {
+        setLoading(true);
+        const [
+          statusResponse,
+          metricsResponse,
+          logsResponse,
+          analyticsResponse,
+        ] = await Promise.all([
+          backendAPI.getSystemStatus(),
+          backendAPI.getMetrics(),
+          backendAPI.getLogs({ limit: 50 }),
+          analyticsAPI.getOverview(),
+        ]);
+
+        if (statusResponse) {
+          setSystemStatus(statusResponse);
+          // Update metrics with real data
+          setSystemMetrics((prev) => ({
+            ...prev,
+            cpuUsage: statusResponse.server?.cpu?.usage || prev.cpuUsage,
+            memoryUsage:
+              Math.round(
+                (statusResponse.server?.memory?.heapUsed /
+                  statusResponse.server?.memory?.heapTotal) *
+                  100
+              ) || prev.memoryUsage,
+            uptime: statusResponse.server?.uptime || prev.uptime,
+          }));
+        }
+
+        if (metricsResponse) {
+          setSystemMetrics((prev) => ({
+            ...prev,
+            responseTime:
+              metricsResponse.performance?.responseTime || prev.responseTime,
+            errorRate: metricsResponse.performance?.errorRate || prev.errorRate,
+            activeConnections:
+              metricsResponse.usage?.activeUsers || prev.activeConnections,
+          }));
+        }
+
+        if (logsResponse?.logs) {
+          setSystemLogs(logsResponse.logs);
+        }
+
+        if (analyticsResponse) {
+          setAnalyticsData(analyticsResponse);
+        }
+      } catch (err) {
+        setError("Failed to load backend data");
+        console.error("Error loading backend data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.role === "admin") {
+      loadBackendData();
     }
-  }, [autoRefresh]);
+  }, [user]);
+
+  // Auto-refresh data
+  useEffect(() => {
+    if (!autoRefresh || user?.role !== "admin") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const [statusResponse, metricsResponse] = await Promise.all([
+          backendAPI.getSystemStatus(),
+          backendAPI.getMetrics(),
+        ]);
+
+        if (statusResponse) {
+          setSystemStatus(statusResponse);
+          setSystemMetrics((prev) => ({
+            ...prev,
+            cpuUsage: statusResponse.server?.cpu?.usage || prev.cpuUsage,
+            memoryUsage:
+              Math.round(
+                (statusResponse.server?.memory?.heapUsed /
+                  statusResponse.server?.memory?.heapTotal) *
+                  100
+              ) || prev.memoryUsage,
+          }));
+        }
+
+        if (metricsResponse) {
+          setSystemMetrics((prev) => ({
+            ...prev,
+            responseTime:
+              metricsResponse.performance?.responseTime || prev.responseTime,
+            errorRate: metricsResponse.performance?.errorRate || prev.errorRate,
+            activeConnections:
+              metricsResponse.usage?.activeUsers || prev.activeConnections,
+          }));
+        }
+      } catch (err) {
+        console.error("Auto-refresh error:", err);
+      }
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0f1a]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#00ff88]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0f1a]">
+        <div className="text-red-600 text-center">
+          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (
     value: number,

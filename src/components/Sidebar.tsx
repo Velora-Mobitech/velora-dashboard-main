@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
 
       {/* User Info */}
       {user && (
-        <div 
+        <div
           style={{
             padding: "1rem",
             marginBottom: "1rem",
@@ -74,7 +74,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <User size={16} color="#00ff88" />
             <div>
-              <div style={{ fontSize: "12px", color: "#00ff88", fontWeight: "600" }}>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "#00ff88",
+                  fontWeight: "600",
+                }}
+              >
                 {user.name}
               </div>
               <div style={{ fontSize: "10px", color: "#888" }}>

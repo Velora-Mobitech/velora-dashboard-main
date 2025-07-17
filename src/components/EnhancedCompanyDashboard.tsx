@@ -1,10 +1,111 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { companyAPI } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface CompanyData {
+  name: string;
+  industry: string;
+  size: string;
+  location: string;
+}
+
+interface CompanyMetrics {
+  totalEmployees: number;
+  activeEmployees: number;
+  productivity: number;
+  satisfaction: number;
+}
 
 const EnhancedCompanyDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("24h");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [notifications, setNotifications] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
+  const [metrics, setMetrics] = useState<CompanyMetrics | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+
+  // Load company data
+  useEffect(() => {
+    const loadCompanyData = async () => {
+      try {
+        setLoading(true);
+        const [dashboardResponse, employeesResponse, analyticsResponse] =
+          await Promise.all([
+            companyAPI.getDashboard(),
+            companyAPI.getEmployees(),
+            companyAPI.getAnalytics(),
+          ]);
+
+        if (dashboardResponse.company) {
+          setCompanyData(dashboardResponse.company);
+          setMetrics(dashboardResponse.metrics);
+        }
+
+        if (employeesResponse) {
+          setEmployees(
+            Array.isArray(employeesResponse) ? employeesResponse : []
+          );
+        }
+
+        if (analyticsResponse) {
+          setAnalytics(analyticsResponse);
+        }
+      } catch (err) {
+        setError("Failed to load company data");
+        console.error("Error loading company data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.role === "company") {
+      loadCompanyData();
+    }
+  }, [user]);
+
+  // Auto-refresh data
+  useEffect(() => {
+    if (!autoRefresh || user?.role !== "company") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const dashboardResponse = await companyAPI.getDashboard();
+        if (dashboardResponse.company) {
+          setCompanyData(dashboardResponse.company);
+          setMetrics(dashboardResponse.metrics);
+        }
+      } catch (err) {
+        console.error("Auto-refresh error:", err);
+      }
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0f1a]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#00ff88]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0f1a]">
+        <div className="text-red-600 text-center">
+          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -39,11 +140,12 @@ const EnhancedCompanyDashboard: React.FC = () => {
               textShadow: "0 0 20px rgba(0, 255, 136, 0.5)",
             }}
           >
-            Company Dashboard
+            {companyData?.name || "Company"} Dashboard
           </h1>
           <p style={{ color: "#888", fontSize: "14px" }}>
-            Business Intelligence • Analytics • Fleet Management • Financial
-            Overview
+            {companyData?.industry || "Technology"} •{" "}
+            {companyData?.size || "Medium"} •{" "}
+            {companyData?.location || "Location"} • Fleet Management
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
@@ -148,7 +250,7 @@ const EnhancedCompanyDashboard: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            1,247
+            {metrics?.totalEmployees || 0}
           </p>
           <p style={{ color: "#00ff88", fontSize: "12px" }}>
             🔄 98.7% operational

@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Home,
   Users,
@@ -11,6 +12,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  User,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -20,6 +22,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const navItems = [
     {
@@ -56,6 +59,31 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
         <div className="logo-icon">V</div>
         <span className="logo-text">Velora</span>
       </div>
+
+      {/* User Info */}
+      {user && (
+        <div 
+          style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(0, 255, 136, 0.1)",
+            borderRadius: "8px",
+            border: "1px solid rgba(0, 255, 136, 0.2)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <User size={16} color="#00ff88" />
+            <div>
+              <div style={{ fontSize: "12px", color: "#00ff88", fontWeight: "600" }}>
+                {user.name}
+              </div>
+              <div style={{ fontSize: "10px", color: "#888" }}>
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav>
         <ul className="nav-menu">

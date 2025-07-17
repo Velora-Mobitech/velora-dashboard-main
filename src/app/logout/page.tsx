@@ -1,12 +1,22 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LogoutPage: React.FC = () => {
   const router = useRouter();
+  const { logout, user } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [showConfirmation, setShowConfirmation] = useState(true);
+
+  useEffect(() => {
+    // If user is not logged in, redirect to login
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+  }, [user, router]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -14,11 +24,9 @@ const LogoutPage: React.FC = () => {
       interval = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            // Simulate logout process
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("userSession");
-            // Redirect to login page (you would replace this with your actual login route)
-            router.push("/");
+            // Perform logout
+            logout();
+            router.push("/login");
             return 0;
           }
           return prev - 1;
@@ -26,7 +34,7 @@ const LogoutPage: React.FC = () => {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isLoggingOut, router]);
+  }, [isLoggingOut, router, logout]);
 
   const handleLogout = () => {
     setShowConfirmation(false);
@@ -40,6 +48,10 @@ const LogoutPage: React.FC = () => {
   const handleStayLoggedIn = () => {
     router.push("/employee");
   };
+
+  if (!user) {
+    return null; // Will redirect to login
+  }
 
   if (isLoggingOut) {
     return (
@@ -250,7 +262,8 @@ const LogoutPage: React.FC = () => {
             }}
           >
             Are you sure you want to sign out? Your current session will be
-            terminated and you&apos;ll need to log in again to access your dashboard.
+            terminated and you&apos;ll need to log in again to access your
+            dashboard.
           </p>
 
           {/* Session Info */}

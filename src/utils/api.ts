@@ -79,7 +79,7 @@ export const authAPI = {
   },
 };
 
-// Employee APIs
+// Employee APIs working 
 export const employeeAPI = {
   getDashboard: async () => {
     return makeAuthenticatedRequest('/employee/dashboard');

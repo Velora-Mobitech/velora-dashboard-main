@@ -1,6 +1,6 @@
 // API utility functions for Velora Dashboard
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = "https://web-production-ff0fb.up.railway.app/api";
 
 // Helper function to get auth token
 const getAuthToken = () => {

@@ -171,7 +171,7 @@ const LoginPage: React.FC = () => {
             Demo Credentials:
           </p>
           <div style={{ fontSize: "12px", color: "#666" }}>
-            <p>Admin: admin@velora.com / admin123</p>
+            {/* <p>Admin: admin@velora.com / admin123</p> */}
             <p>Company: contact@techcorp.com / company123</p>
             <p>Employee: john@techcorp.com / employee123</p>
           </div>
